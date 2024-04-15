@@ -1,13 +1,13 @@
 syntax = "proto3";
-
+package keyvaluestore;
 // The client service definition.
 service KeyValueService {
     // Retrieves a key from a server.
     rpc get (Key) returns (Value) {}
     // Set a key on a server.
-    rpc put (NewKeyValue) returns (Void) {}
-    // List all the keys defined on a server.
-    rpc getAllKeys (Void) returns (StoredKeys) {}
+    rpc put (KeyValue) returns (Void) {}
+    // Send port number
+    rpc str_cnt (Void) returns (Port) {}
 }
 
 //Defining the main game object
@@ -28,17 +28,12 @@ message Value {
     bool defined = 2;
 }
 
-// The PUT message containing the key's name and value.
-message NewKeyValue {
-    string key = 1;
-    string value = 2;
-}
 
 // Empty message
 message Void {
 }
 
-// The response message containing all keys stored.
-message StoredKeys {
-    repeated string keys = 1;
+// Port number message from Storage to Manager
+message Port {
+    int64 port = 1;
 }

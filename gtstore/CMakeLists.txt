@@ -19,7 +19,7 @@
 
 cmake_minimum_required(VERSION 3.8)
 
-project(RouteGuide C CXX)
+project(KeyValueStore C CXX)
 
 include(./common.cmake)
 
