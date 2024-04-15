@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+// The client service definition.
+service KeyValueService {
+    // Retrieves a key from a server.
+    rpc get (Key) returns (Value) {}
+    // Set a key on a server.
+    rpc put (NewKeyValue) returns (Void) {}
+    // List all the keys defined on a server.
+    rpc getAllKeys (Void) returns (StoredKeys) {}
+}
+
+//Defining the main game object
+message KeyValue {
+    string key = 1;
+    string value = 2;
+}
+
+// The GET message containing the key's name.
+message Key {
+    string key = 1;
+}
+
+// The response message containing the key's value.
+message Value {
+    string value = 1;
+    // True if key was defined, otherwise false.
+    bool defined = 2;
+}
+
+// The PUT message containing the key's name and value.
+message NewKeyValue {
+    string key = 1;
+    string value = 2;
+}
+
+// Empty message
+message Void {
+}
+
+// The response message containing all keys stored.
+message StoredKeys {
+    repeated string keys = 1;
+}
