@@ -5,13 +5,56 @@
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
 
+#include <mutex>
+#include <vector>
+
 using grpc::Server;
 using grpc::ServerBuilder;
+using grpc::Status;
+using grpc::ServerContext;
+
+using keyvaluestore::KeyValueService;
+using keyvaluestore::Key;
+using keyvaluestore::Value;
+using keyvaluestore::KeyValue;
+using keyvaluestore::Void;
+using keyvaluestore::Port;
+
+std::vector<int64_t> node_vector;
+std::mutex node_vector_mtx;
+
+class KeyValueServiceManagerImpl final : public KeyValueService::Service {
+	public:
+	KeyValueServiceManagerImpl() {
+
+	}
+
+	Status get(ServerContext* context, const Key* key, Value* value) override {
+		return Status::OK;
+	}
+
+	Status put(ServerContext* context, const KeyValue* keyvalue, Void* response) override {
+		return Status::OK;
+	}
+
+	Status str_cnt(ServerContext* context, const Port* port, Void* response) override {
+		cout << "str_cnt called by storage node. port num: " << port->port() << "\n";
+		cout << "connect to storage node. port num: " << port->port() << "\n";
+
+		
+
+		std::lock_guard<std::mutex> lock(node_vector_mtx);
+    	node_vector.push_back(port->port());
+
+		return Status::OK;
+	}
+};
 
 void GTStoreManager::init() {
-	std::string server_address("0.0.0.0:50051");
 	cout << "Inside GTStoreManager::init()\n";
-	ManagerImpl service();
+	std::string server_address("0.0.0.0:50051");
+	KeyValueServiceManagerImpl service;
+
 	ServerBuilder builder;
   	builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   	builder.RegisterService(&service);
