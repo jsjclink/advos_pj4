@@ -4,11 +4,15 @@
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
-#include "keyvaluestore.grpc.pb.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
 int store_num = 0;
+
+class StorageImpl final : public KeyValueService::Service {
+	
+}
+
 void GTStoreStorage::init() {
 	//TODO: change server port to go to a unique port everytime it is called
 	std::string server_address("0.0.0.0:50052");

@@ -2,29 +2,33 @@ syntax = "proto3";
 package keyvaluestore;
 // The client service definition.
 service KeyValueService {
-    // Retrieves a key from a server.
+    // Get a Value for that Key from Storage
     rpc get (Key) returns (Value) {}
-    // Set a key on a server.
+    // Put a Key and Value inside Storage Node
     rpc put (KeyValue) returns (Void) {}
     // Send port number
-    rpc str_cnt (Void) returns (Port) {}
+    rpc str_cnt (Port) returns (Void) {}
+    // Getting Map
+    rpc get_map (Void) returns (Map) {}
+    // Get Storage Node Numbers from Manager
+    rpc get_snn (Key) returns (Port) {}
 }
 
-//Defining the main game object
+//KeyValue for General Use
 message KeyValue {
     string key = 1;
-    string value = 2;
+    repeated string values = 2;
 }
 
-// The GET message containing the key's name.
+// Key for get message
 message Key {
     string key = 1;
 }
 
-// The response message containing the key's value.
+// Value Response
 message Value {
-    string value = 1;
-    // True if key was defined, otherwise false.
+    repeated string values = 1;
+    // is key defined?
     bool defined = 2;
 }
 
@@ -36,4 +40,9 @@ message Void {
 // Port number message from Storage to Manager
 message Port {
     int64 port = 1;
+}
+
+// Getting the HashMap from Manager to Client
+message Map {
+    repeated KeyValue entries = 1;
 }
