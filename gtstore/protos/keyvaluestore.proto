@@ -8,6 +8,8 @@ service KeyValueService {
     rpc put (KeyValue) returns (Void) {}
     // Send port number
     rpc str_cnt (Port) returns (Void) {}
+    // Check
+    rpc check_alive (Void) returns (Void) {}
     // Getting Map
     rpc get_map (Void) returns (Map) {}
     // Get Storage Node Numbers from Manager
