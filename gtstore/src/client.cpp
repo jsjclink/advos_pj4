@@ -16,9 +16,10 @@ using keyvaluestore::KeyValue;
 using keyvaluestore::Value;
 using keyvaluestore::Port;
 using keyvaluestore::Void;
+using keyvaluestore::Put_Ports;
 
 
-unordered_map<string, string> ClientMap;
+unordered_map<string, val_t> ClientMap;
 
 
 Key MakeKey(string key) {
@@ -38,14 +39,14 @@ KeyValue MakeKeyValue(string key, val_t val){
 }
 
 
-string ParsePort(string msg){
-	std::string substring;
-    for (char ch : msg) {
-        if (ch != ',') substring += ch;
-        else break;
-    }
-    return substring;
-}
+// string ParsePort(string msg){
+// 	std::string substring;
+//     for (char ch : msg) {
+//         if (ch != ',') substring += ch;
+//         else break;
+//     }
+//     return substring;
+// }
 
 val_t ConnStrGetValue(string port, string key){
 	val_t value;
@@ -56,26 +57,28 @@ val_t ConnStrGetValue(string port, string key){
 	unique_ptr<KeyValueService::Stub> stub_ = KeyValueService::NewStub(channel);
 	Status stat = stub_->get(&context,gkey,&response);
 	if(stat.ok()){
-		value[0] = response.values();
+		for(auto msg : response.values()){
+			value.push_back(msg);
+		}
 		return value;
 	}
 	else{
 		return {};
 	}
 }
-bool ConnStrPutValue(string port,string key,val_t value){
+bool ConnStrPutValue(val_t ports,string key,val_t value){
 	KeyValue gkey = MakeKeyValue(key,value);
 	grpc::ClientContext context;
 	Void vd;
-	auto channel = grpc::CreateChannel("localhost:"+port, grpc::InsecureChannelCredentials());
-	unique_ptr<KeyValueService::Stub> stub_ = KeyValueService::NewStub(channel);
-	Status stat = stub_->put(&context,gkey,&vd);
-	if(stat.ok()){
-		return true;
+	for(string port : ports){
+		auto channel = grpc::CreateChannel("localhost:"+port, grpc::InsecureChannelCredentials());
+		unique_ptr<KeyValueService::Stub> stub_ = KeyValueService::NewStub(channel);
+		Status stat = stub_->put(&context,gkey,&vd);
+		if(!stat.ok()){
+			return false;
+		}
 	}
-	else{
-		return false;
-	}
+	return true;
 }
 void GTStoreClient::init(int id) {
 
@@ -99,13 +102,13 @@ void GTStoreClient::init(int id) {
 val_t GTStoreClient::get(string key) {
 
 		cout << "Inside GTStoreClient::get() for client: " << client_id << " key: " << key << "\n";
-		val_t value;
+		val_t value,ports;
 		string port;
 		grpc::ClientContext context;
 		// Get the value!
 		if (ClientMap.find(key) != ClientMap.end()) {
 			//key inside map! Connect to Storage Node
-			port = ClientMap[key];
+			port = ClientMap[key].front();
 			value = ConnStrGetValue(port,key);
     	}
 		else{
@@ -115,16 +118,17 @@ val_t GTStoreClient::get(string key) {
 			Status stat = this->stub_->get_snn(&context,gkey,&response);
 			if(stat.ok()){
 				std::cout << "Response received" << std::endl;
-				ClientMap[key] = response.port();
-				port = tresponse.port();
+				ports.push_back(response.port());
+				ClientMap[key] = ports;
+				port = response.port();
 				value = ConnStrGetValue(port,key);
+				return value;
 			}
 			else{
 				std::cerr << "RPC failed: " << stat.error_message() << std::endl;
 				return {};
 			}
 		}
-		return value;
 }
 
 bool GTStoreClient::put(string key, val_t value) {
@@ -136,16 +140,18 @@ bool GTStoreClient::put(string key, val_t value) {
 		cout << "Inside GTStoreClient::put() for client: " << client_id << " key: " << key << " value: " << print_value << "\n";
 		// Put the value!
 
-		Port response;
-		string port;
+		Put_Ports response;
 		Key gkey = MakeKey(key);
 		grpc::ClientContext context;
-		Status stat = this->stub_->get_snn(&context,gkey,&response);
+		val_t ports;
+		Status stat = this->stub_->put_snn(&context,gkey,&response);
 		if(stat.ok()){
 			std::cout << "Response received" << std::endl;
-			ClientMap[key] = response.port();
-			port = to_string(response.port());
-			return ConnStrPutValue(port,key,value);
+			for (auto msg: response.ports()){
+				ports.push_back(msg);
+			}
+			ClientMap[key] = ports;
+			return ConnStrPutValue(ports,key,value);
 		}
 		else{
 			std::cerr << "RPC failed: " << stat.error_message() << std::endl;
