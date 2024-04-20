@@ -26,7 +26,7 @@ using grpc::ClientContext;
 
 int store_num = 0;
 
-Port MakePort(int64_t port) {
+Port MakePort(string port) {
 	Port p;
 	p.set_port(port);
 	return p;
@@ -38,7 +38,7 @@ class KeyValueServiceManagerClient {
 
 	}
 
-	void str_cnt(int64_t port_int) {
+	void str_cnt(string port_int) {
 		ClientContext context;
 		Port port = MakePort(port_int);
 		Void response;
@@ -78,10 +78,10 @@ class KeyValueServiceStorageImpl final : public KeyValueService::Service {
 	}
 };
 
-void GTStoreStorage::init() {
+void GTStoreStorage::init(string port) {
 	cout << "Inside GTStoreStorage::init()\n";
 	//TODO: change server port to go to a unique port everytime it is called
-	std::string server_address("0.0.0.0:50052");
+	std::string server_address = "0.0.0.0:" + port;
 	KeyValueServiceStorageImpl service;
 
 	ServerBuilder builder;
@@ -91,17 +91,18 @@ void GTStoreStorage::init() {
   	std::cout << "Server listening on " << server_address << std::endl;
 
 	// connect to manager
-	cout << "connect to server\n";
+	cout << "Connect to server\n";
 	KeyValueServiceManagerClient client(grpc::CreateChannel("0.0.0.0:50051", grpc::InsecureChannelCredentials()));
-	client.str_cnt(50052);
+	client.str_cnt(port);
 
   	server->Wait();
 }
 
 int main(int argc, char **argv) {
 	// todo: argv -> port
+	string port = "50052";
 
 	// start server
 	GTStoreStorage storage;
-	storage.init();
+	storage.init(port);
 }
