@@ -34,12 +34,12 @@ class GTStoreClient {
 
 class GTStoreManager {
 		public:
-				void init();
+				void init(int nodes, int rep);
 };
 
 class GTStoreStorage {
 		public:
-				void init();
+				void init(string port);
 };
 
 #endif
