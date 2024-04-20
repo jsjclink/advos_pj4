@@ -11,7 +11,7 @@ service KeyValueService {
     // Check
     rpc check_alive (Void) returns (Void) {}
     // Getting Map
-    rpc get_map (Void) returns (Map) {}
+    //rpc get_map (Void) returns (Map) {}
     // Get Storage Node Numbers from Manager
     rpc get_snn (Key) returns (Port) {}
 }
@@ -41,10 +41,10 @@ message Void {
 
 // Port number message from Storage to Manager
 message Port {
-    int64 port = 1;
+    string port = 1;
 }
 
 // Getting the HashMap from Manager to Client
-message Map {
-    repeated KeyValue entries = 1;
-}
+//message Map {
+//    repeated KeyValue entries = 1;
+//}

@@ -18,7 +18,7 @@ using keyvaluestore::Port;
 using keyvaluestore::Void;
 
 
-unordered_map<string, string> ClientMap;
+unordered_map<string, val_t> ClientMap;
 
 
 Key MakeKey(string key) {
@@ -31,14 +31,16 @@ Key MakeKey(string key) {
 KeyValue MakeKeyValue(string key, val_t val){
 	KeyValue kv;
 	kv.set_key(key);
-	kv.set_value(val[0]);
+	for(string v_temp: val){
+		kv.add_values(v_temp);
+	}
 	return kv;
 }
 
 
 void getHashMap(const keyvaluestore::Map& message) {
     for (const auto& entry : message.entries()) {
-        ClientMap[entry.key()] = entry.value();
+        ClientMap[entry.key()] = entry.values();
     }
     return;
 }
@@ -61,7 +63,7 @@ val_t ConnStrGetValue(string port, string key){
 	unique_ptr<KeyValueService::Stub> stub_ = KeyValueService::NewStub(channel);
 	Status stat = stub_->get(&context,gkey,&response);
 	if(stat.ok()){
-		value[0] = response.value();
+		value[0] = response.values();
 		return value;
 	}
 	else{
