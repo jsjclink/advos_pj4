@@ -26,6 +26,8 @@ using grpc::ClientContext;
 
 int store_num = 0;
 
+unordered_map<string, vector<string>> storage;
+
 Port MakePort(string port) {
 	Port p;
 	p.set_port(port);
@@ -64,10 +66,16 @@ class KeyValueServiceStorageImpl final : public KeyValueService::Service {
 	}
 
 	Status get(ServerContext* context, const Key* key, Value* value) override {
+		
+
+
 		return Status::OK;
 	}
 
 	Status put(ServerContext* context, const KeyValue* keyvalue, Void* response) override {
+		
+
+
 		return Status::OK;
 	}
 

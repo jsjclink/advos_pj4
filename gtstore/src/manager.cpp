@@ -78,7 +78,7 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	}
 
 	Status put_snn(ServerContext* context, const Key* key, Put_Ports* put_ports) override {
-		cout << "put_snn is called by client.\n";
+		cout << "put_snn is called by client. key: " << key->key() << "\n";
 		std::lock_guard<std::mutex> lock(node_mtx);
 		if(auto it = key_nodes_map.find(key->key()); it != key_nodes_map.end()) {
 			// moidfy operation
