@@ -29,16 +29,8 @@ using grpc::Channel;
 using grpc::ClientContext;
 
 unordered_map<string, int> node_vol_map;
-std::mutex node_vol_map_mtx;
-
 unordered_map<string, vector<string>> key_nodes_map;
-std::mutex key_nodes_map_mtx;
-
-Port MakePort(string port) {
-	Port p;
-	p.set_port(port);
-	return p;
-}
+std::mutex node_mtx;
 
 class KeyValueServiceStorageClient {
 	public:
@@ -71,12 +63,12 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 
 	Status get_snn(ServerContext* context, const Key* key, Port* port) override {
 		cout << "get_snn is called by client.\n";
-		std::lock_guard<std::mutex> lock(key_nodes_map_mtx);
+		std::lock_guard<std::mutex> lock(node_mtx);
 		if(auto it = key_nodes_map.find(key->key()); it != key_nodes_map.end()) {
 			vector<string>& ports = it->second;
 			port->set_port(get_target_port(ports));
 		} else {
-			port->set_port(MakePort(""));
+			port->set_port("");
 		}
 		
 		return Status::OK;
@@ -84,7 +76,7 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 
 	Status put_snn(ServerContext* context, const Key* key, Put_Ports* put_ports) override {
 		cout << "put_snn is called by client.\n";
-		std::lock_guard<std::mutex> lock(key_nodes_map_mtx);
+		std::lock_guard<std::mutex> lock(node_mtx);
 		if(auto it = key_nodes_map.find(key->key()); it != key_nodes_map.end()) {
 			// moidfy operation
 			vector<string>& ports = it->second;
@@ -94,8 +86,8 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 		} else {
 			// initial put operation
 			vector<string> ports = get_target_ports();
+			key_nodes_map[key->key()] = ports;
 			for(const auto& port : ports) {
-				std::lock_guard<std::mutex> lock(node_vol_map_mtx);
 				node_vol_map[port] += 1;
 				put_ports->add_ports(port);
 			}
@@ -109,15 +101,13 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 		cout << "str_cnt is called by storage node. port num: " << port->port() << "\n";
 		cout << "Connect to storage node. port num: " << port->port() << "\n";
 
-		// connect to storage node
-		std::string server_address = "0.0.0.0:" + port->port();
-		KeyValueServiceStorageClient client(grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials()));
-
-		// call check alive for test
-		client.check_alive();
-
-		std::lock_guard<std::mutex> lock(node_vol_map_mtx);
-    	node_vol_map[port->port()] = 0;
+			// connect to storage node
+			std::string server_address = "0.0.0.0:" + port->port();
+			KeyValueServiceStorageClient client(grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials()));
+			client.check_alive();
+		
+			std::lock_guard<std::mutex> lock(node_mtx);
+    		node_vol_map[port->port()] = 0;
 
 		return Status::OK;
 	}
@@ -132,7 +122,7 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	vector<string> get_target_ports() {
 		vector<pair<int, string>> pairs;
 
-		std::lock_guard<std::mutex> lock(node_vol_map_mtx);
+		std::lock_guard<std::mutex> lock(node_mtx);
 
 		for(const auto& kv: node_vol_map) {
 			pairs.push_back({kv.second, kv.first});
@@ -150,6 +140,10 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	}
 };
 
+void PeriodicCheckAlive(int interval) {
+
+}
+
 void GTStoreManager::init(int nodes, int rep) {
 	cout << "Inside GTStoreManager::init()\n";
 	std::string server_address("0.0.0.0:50051");
@@ -160,6 +154,10 @@ void GTStoreManager::init(int nodes, int rep) {
   	builder.RegisterService(&service);
   	std::unique_ptr<Server> server(builder.BuildAndStart());
   	std::cout << "Server listening on " << server_address << std::endl;
+
+	// 주기적으로 살아있는지 확인
+
+	
   	server->Wait();
 }
 

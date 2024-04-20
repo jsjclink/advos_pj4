@@ -99,8 +99,7 @@ void GTStoreStorage::init(string port) {
 }
 
 int main(int argc, char **argv) {
-	// todo: argv -> port
-	string port = "50052";
+	string port = argv[1];
 
 	// start server
 	GTStoreStorage storage;
