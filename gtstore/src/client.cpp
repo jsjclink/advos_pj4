@@ -18,7 +18,7 @@ using keyvaluestore::Port;
 using keyvaluestore::Void;
 
 
-unordered_map<string, val_t> ClientMap;
+unordered_map<string, string> ClientMap;
 
 
 Key MakeKey(string key) {
@@ -37,13 +37,6 @@ KeyValue MakeKeyValue(string key, val_t val){
 	return kv;
 }
 
-
-void getHashMap(const keyvaluestore::Map& message) {
-    for (const auto& entry : message.entries()) {
-        ClientMap[entry.key()] = entry.values();
-    }
-    return;
-}
 
 string ParsePort(string msg){
 	std::string substring;
@@ -90,16 +83,16 @@ void GTStoreClient::init(int id) {
 		client_id = id;
 		auto channel = grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials());
 		this->stub_ = KeyValueService::NewStub(channel);
-		grpc::ClientContext context;
-		keyvaluestore::Map response;
-		keyvaluestore::Void vd;
-		Status status = this->stub_->get_map(&context, vd, &response);
-		if (status.ok()) {
-			std::cout << "Response received" << std::endl;
-			getHashMap(response);
-		} else {
-			std::cerr << "RPC failed: " << status.error_message() << std::endl;
-		}
+		// grpc::ClientContext context;
+		// keyvaluestore::Map response;
+		// keyvaluestore::Void vd;
+		// Status status = this->stub_->get_map(&context, vd, &response);
+		// if (status.ok()) {
+		// 	std::cout << "Response received" << std::endl;
+		// 	getHashMap(response);
+		// } else {
+		// 	std::cerr << "RPC failed: " << status.error_message() << std::endl;
+		// }
 		return;
 }
 
@@ -112,7 +105,7 @@ val_t GTStoreClient::get(string key) {
 		// Get the value!
 		if (ClientMap.find(key) != ClientMap.end()) {
 			//key inside map! Connect to Storage Node
-			port = ParsePort(ClientMap[key]);
+			port = ClientMap[key];
 			value = ConnStrGetValue(port,key);
     	}
 		else{
@@ -123,7 +116,7 @@ val_t GTStoreClient::get(string key) {
 			if(stat.ok()){
 				std::cout << "Response received" << std::endl;
 				ClientMap[key] = response.port();
-				port = to_string(response.port());
+				port = tresponse.port();
 				value = ConnStrGetValue(port,key);
 			}
 			else{

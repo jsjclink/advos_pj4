@@ -14,6 +14,8 @@ service KeyValueService {
     //rpc get_map (Void) returns (Map) {}
     // Get Storage Node Numbers from Manager
     rpc get_snn (Key) returns (Port) {}
+    // Put Storage Node Numbers from Manager
+    rpc put_snn(Key) returns (Put_Ports) {}
 }
 
 //KeyValue for General Use
@@ -44,6 +46,9 @@ message Port {
     string port = 1;
 }
 
+message Put_Ports {
+    repeated string ports = 1;
+}
 // Getting the HashMap from Manager to Client
 //message Map {
 //    repeated KeyValue entries = 1;
