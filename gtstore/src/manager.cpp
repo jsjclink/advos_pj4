@@ -67,10 +67,13 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 		if(auto it = key_nodes_map.find(key->key()); it != key_nodes_map.end()) {
 			vector<string>& ports = it->second;
 			port->set_port(get_target_port(ports));
+			cout << get_target_port(ports) << "\n";
 		} else {
 			port->set_port("");
+			cout << "get error\n";
 		}
 		
+		cout << "get_snn end\n";
 		return Status::OK;
 	}
 
@@ -93,6 +96,7 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 			}
 		}
 		
+		cout << "put_snn end\n";
 		return Status::OK;
 	}
 
@@ -121,8 +125,6 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	}
 	vector<string> get_target_ports() {
 		vector<pair<int, string>> pairs;
-
-		std::lock_guard<std::mutex> lock(node_mtx);
 
 		for(const auto& kv: node_vol_map) {
 			pairs.push_back({kv.second, kv.first});
@@ -163,10 +165,6 @@ void GTStoreManager::init(int nodes, int rep) {
 
 
 int main(int argc, char **argv) {
-	if (argc < 6) {
-        std::cout << "Usage: ./manager --nodes <number> --rep <number>\n";
-        return 1;
-    }
 	int nodes = std::atoi(argv[2]);
     int rep = std::atoi(argv[4]);
 

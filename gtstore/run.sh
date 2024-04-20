@@ -5,7 +5,7 @@ cd cmake/build
 sleep 5
 
 # Launch couple GTStore Storage Nodes
-./storage &
+./storage 50052 &
 sleep 5
 #./storage &
 #sleep 5
