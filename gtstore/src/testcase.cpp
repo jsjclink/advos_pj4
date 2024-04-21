@@ -27,7 +27,9 @@ void put(string key, string value){
 	client.init(0);
     val_t val;
 	val.push_back(value);
-	client.put(key, val);
+	bool resp = client.put(key, val);
+    if(resp) cout << "client - put success\n";
+    else cout << "client - put failure\n";
     client.finalize();
     return;
 }
@@ -35,28 +37,29 @@ void put(string key, string value){
 void get(string key){
     GTStoreClient client;
 	client.init(0);
-	client.get(key);
+    val_t res = client.get(key);
+    string print_value ="";
+    for(uint i=0; i<res.size();i++){
+        print_value += res[i] + " ";
+    }
+    cout << "client - key: " << key << " value: " << print_value << "\n";
     client.finalize();
     return;
 }
 
 int main(int argc, char **argv) {
-    //put
     string key, value;
-    cout<<argc<<"\n";
     if(argc==5){
         key = string(argv[2]);
         value = string(argv[4]);
         put(key,value);
-        return 0;
     }
-    else if(argc==4){
+    else if(argc==3){
         key = string(argv[2]);
         get(key);
-        return 0;
     }
     else{
-        cout<<"Usage: ./client --put (key) --val (value)\n./client --get (key)\n";
-        return 0;
+        cout<<"Usage: ./client --put (key) --val (value) or ./client --get (key)\n";
     }
+    return 0;
 }

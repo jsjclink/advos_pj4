@@ -28,6 +28,7 @@ kill_service(){
 }
 
 testcase_1(){
+    echo "Testcase 1: simple put and get, single server"
     service 1 1
 
     ./client --put key1 --val value1
@@ -39,9 +40,11 @@ testcase_1(){
     ./client --get key2
     ./client --get key3
     kill_service "$manager_pid"
+    echo ""
 }
 
 testcase_2(){
+    echo "Testcase 2: simple put and get, multi server"
     service 5 3
 
     ./client --put key1 --val value1
@@ -56,6 +59,7 @@ testcase_2(){
 }
 
 testcase_3(){
+    echo "Testcase 3: storage node failure"
     service 3 2
 
     ./client --put key1 --val value1
@@ -86,6 +90,7 @@ testcase_3(){
 }
 
 testcase_4(){
+    echo "Testcase 4: multiple storage node failure"
     service 7 3
 
     ./client --put key1 --val value1

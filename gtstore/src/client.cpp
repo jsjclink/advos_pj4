@@ -57,6 +57,7 @@ val_t ConnStrGetValue(string port, string key){
 	unique_ptr<KeyValueService::Stub> stub_ = KeyValueService::NewStub(channel);
 	Status stat = stub_->get(&context,gkey,&response);
 	if(stat.ok()){
+		std::cout << "client - Response received: get success" << std::endl;
 		for(auto msg : response.values()){
 			value.push_back(msg);
 		}
@@ -74,15 +75,16 @@ bool ConnStrPutValue(val_t ports,string key,val_t value){
 		auto channel = grpc::CreateChannel("localhost:"+port, grpc::InsecureChannelCredentials());
 		unique_ptr<KeyValueService::Stub> stub_ = KeyValueService::NewStub(channel);
 		Status stat = stub_->put(&context,gkey,&vd);
-		if(!stat.ok()){
-			return false;
+		if(stat.ok()){
+			std::cout << "client - Response received: put success" << std::endl;
+			return true;
 		}
 	}
-	return true;
+	return false;
 }
 void GTStoreClient::init(int id) {
 
-		cout << "Inside GTStoreClient::init() for client " << id << "\n";
+		//cout << "Inside GTStoreClient::init() for client " << id << "\n";
 		client_id = id;
 		auto channel = grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials());
 		this->stub_ = KeyValueService::NewStub(channel);
@@ -101,7 +103,7 @@ void GTStoreClient::init(int id) {
 
 val_t GTStoreClient::get(string key) {
 
-		cout << "Inside GTStoreClient::get() for client: " << client_id << " key: " << key << "\n";	
+		//cout << "Inside GTStoreClient::get() for client: " << client_id << " key: " << key << "\n";	
 		val_t value,ports;
 		string port;
 		int found = 0;
@@ -125,7 +127,7 @@ val_t GTStoreClient::get(string key) {
 				Port response;
 				Status stat = this->stub_->get_snn(&context,gkey,&response);
 				if(stat.ok()){
-					std::cout << "Client: Response received" << std::endl;
+					//std::cout << "client - Response received" << std::endl;
 					ports.push_back(response.port());
 					ClientMap[key] = ports;
 					port = response.port();
@@ -133,7 +135,7 @@ val_t GTStoreClient::get(string key) {
 					return value;
 				}
 				else{
-					std::cerr << "Client: RPC failed: " << stat.error_message() << std::endl;
+					std::cerr << "client - RPC failed: " << stat.error_message() << std::endl;
 					return {};
 				}
 			}
@@ -145,7 +147,7 @@ val_t GTStoreClient::get(string key) {
 			Port response;
 			Status stat = this->stub_->get_snn(&context,gkey,&response);
 			if(stat.ok()){
-				std::cout << "Client: Response received" << std::endl;
+				//std::cout << "client - Response received" << std::endl;
 				ports.push_back(response.port());
 				ClientMap[key] = ports;
 				port = response.port();
@@ -153,7 +155,7 @@ val_t GTStoreClient::get(string key) {
 				return value;
 			}
 			else{
-				std::cerr << "Client: RPC failed: " << stat.error_message() << std::endl;
+				std::cerr << "client - RPC failed: " << stat.error_message() << std::endl;
 				return {};
 			}
 		}
@@ -165,7 +167,7 @@ bool GTStoreClient::put(string key, val_t value) {
 		for (uint i = 0; i < value.size(); i++) {
 				print_value += value[i] + " ";
 		}
-		cout << "Inside GTStoreClient::put() for client: " << client_id << " key: " << key << " value: " << print_value << "\n";
+		//cout << "Inside GTStoreClient::put() for client: " << client_id << " key: " << key << " value: " << print_value << "\n";
 		// Put the value!
 
 		Put_Ports response;
@@ -174,7 +176,7 @@ bool GTStoreClient::put(string key, val_t value) {
 		val_t ports;
 		Status stat = this->stub_->put_snn(&context,gkey,&response);
 		if(stat.ok()){
-			std::cout << "Client: Response received" << std::endl;
+			//std::cout << "client - Response received" << std::endl;
 			for (auto msg: response.ports()){
 				ports.push_back(msg);
 			}
@@ -182,11 +184,11 @@ bool GTStoreClient::put(string key, val_t value) {
 			return ConnStrPutValue(ports,key,value);
 		}
 		else{
-			std::cerr << "RPC failed: " << stat.error_message() << std::endl;
+			std::cerr << "client - RPC failed: " << stat.error_message() << std::endl;
 			return false;
 		}
 }
 
 void GTStoreClient::finalize() {
-		cout << "Inside GTStoreClient::finalize() for client " << client_id << "\n";
+		//cout << "Inside GTStoreClient::finalize() for client " << client_id << "\n";
 }
