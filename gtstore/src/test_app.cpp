@@ -17,7 +17,7 @@ void single_set_get(int client_id) {
 		for(uint i=0; i<res.size();i++){
 			print_value += res[i] + " ";
 		}
-		cout << "key: " << key << " value: " << print_value << "\n";
+		cout << "client - key: " << key << " value: " << print_value << "\n";
 		
 		client.finalize();
 }
