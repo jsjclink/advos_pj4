@@ -101,7 +101,7 @@ void GTStoreClient::init(int id) {
 
 val_t GTStoreClient::get(string key) {
 
-		cout << "Inside GTStoreClient::get() for client: " << client_id << " key: " << key << "\n";
+		cout << "Inside GTStoreClient::get() for client: " << client_id << " key: " << key << "\n";	
 		val_t value,ports;
 		string port;
 		grpc::ClientContext context;
@@ -110,6 +110,7 @@ val_t GTStoreClient::get(string key) {
 			//key inside map! Connect to Storage Node
 			port = ClientMap[key].front();
 			value = ConnStrGetValue(port,key);
+			return value;
     	}
 		else{
 			//key not inside map, contact Manager.

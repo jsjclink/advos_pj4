@@ -12,8 +12,13 @@ void single_set_get(int client_id) {
 		value.push_back("phone_case");
 
 		client.put(key, value);
-		client.get(key);
-
+		val_t res = client.get(key);
+		string print_value ="";
+		for(uint i=0; i<res.size();i++){
+			print_value += res[i] + " ";
+		}
+		cout << "key: " << key << " value: " << print_value << "\n";
+		
 		client.finalize();
 }
 
