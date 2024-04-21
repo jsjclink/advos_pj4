@@ -104,12 +104,39 @@ val_t GTStoreClient::get(string key) {
 		cout << "Inside GTStoreClient::get() for client: " << client_id << " key: " << key << "\n";	
 		val_t value,ports;
 		string port;
+		int found = 0;
 		grpc::ClientContext context;
 		// Get the value!
 		if (ClientMap.find(key) != ClientMap.end()) {
-			//key inside map! Connect to Storage Node
-			port = ClientMap[key].front();
-			value = ConnStrGetValue(port,key);
+			//key inside Client map! Connect to Storage Node
+			for (auto it = ClientMap[key].begin(); it != ClientMap[key].end(); ) {
+    			value = ConnStrGetValue(*it, key);
+    			if (!value.empty()) {
+        			found = 1;
+        			break;
+    			} else {
+        			it = ClientMap[key].erase(it); // Update iterator after erasing
+    			}
+			}
+			//Failure of all Storage Node!!
+			if(!found){
+				ClientMap[key].clear();
+				Key gkey = MakeKey(key);
+				Port response;
+				Status stat = this->stub_->get_snn(&context,gkey,&response);
+				if(stat.ok()){
+					std::cout << "Client: Response received" << std::endl;
+					ports.push_back(response.port());
+					ClientMap[key] = ports;
+					port = response.port();
+					value = ConnStrGetValue(port,key);
+					return value;
+				}
+				else{
+					std::cerr << "Client: RPC failed: " << stat.error_message() << std::endl;
+					return {};
+				}
+			}
 			return value;
     	}
 		else{
@@ -118,7 +145,7 @@ val_t GTStoreClient::get(string key) {
 			Port response;
 			Status stat = this->stub_->get_snn(&context,gkey,&response);
 			if(stat.ok()){
-				std::cout << "Response received" << std::endl;
+				std::cout << "Client: Response received" << std::endl;
 				ports.push_back(response.port());
 				ClientMap[key] = ports;
 				port = response.port();
@@ -126,7 +153,7 @@ val_t GTStoreClient::get(string key) {
 				return value;
 			}
 			else{
-				std::cerr << "RPC failed: " << stat.error_message() << std::endl;
+				std::cerr << "Client: RPC failed: " << stat.error_message() << std::endl;
 				return {};
 			}
 		}
@@ -147,7 +174,7 @@ bool GTStoreClient::put(string key, val_t value) {
 		val_t ports;
 		Status stat = this->stub_->put_snn(&context,gkey,&response);
 		if(stat.ok()){
-			std::cout << "Response received" << std::endl;
+			std::cout << "Client: Response received" << std::endl;
 			for (auto msg: response.ports()){
 				ports.push_back(msg);
 			}
