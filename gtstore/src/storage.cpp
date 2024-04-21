@@ -8,6 +8,9 @@
 #include <grpcpp/client_context.h>
 #include <grpcpp/create_channel.h>
 
+#include <mutex>
+#include <vector>
+
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::Status;
@@ -27,6 +30,7 @@ using grpc::ClientContext;
 int store_num = 0;
 
 unordered_map<string, vector<string>> storage;
+std::mutex storage_mtx;
 
 Port MakePort(string port) {
 	Port p;
@@ -66,16 +70,30 @@ class KeyValueServiceStorageImpl final : public KeyValueService::Service {
 	}
 
 	Status get(ServerContext* context, const Key* key, Value* value) override {
-		
+		cout << "get is called by client.\n";
+		if(auto it = storage.find(key->key()); it != storage.end()) {
+			cout << "key found. get end.\n";
+			
+			vector<string>& values = it->second;
+			for(const string& val: values) {
+				value->add_values(val);
+			}
+		} else {
+			cout << "key not found. get end.\n";
+		}
 
 
 		return Status::OK;
 	}
 
 	Status put(ServerContext* context, const KeyValue* keyvalue, Void* response) override {
-		
+		cout << "put is called by client.\n";
+		vector<string> values(keyvalue->values().begin(), keyvalue->values().end());
 
+		std::lock_guard<std::mutex> lock(storage_mtx);
+		storage[keyvalue->key()] = values;
 
+		cout << "put end.\n";
 		return Status::OK;
 	}
 
