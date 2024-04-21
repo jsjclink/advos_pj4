@@ -11,6 +11,8 @@
 #include <mutex>
 #include <vector>
 #include <algorithm>
+#include <thread>
+#include <chrono>
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -34,26 +36,24 @@ std::mutex node_mtx;
 
 class KeyValueServiceStorageClient {
 	public:
-	KeyValueServiceStorageClient(std::shared_ptr<Channel> channel) : stub_(KeyValueService::NewStub(channel)) {
+	string port;
+	KeyValueServiceStorageClient(string port, std::shared_ptr<Channel> channel) : port(port), stub_(KeyValueService::NewStub(channel)) {
 
 	}
 
-	void check_alive() {
+	Status check_alive() {
 		ClientContext context;
 		Void request, response;
 
-		Status status = stub_->check_alive(&context, request, &response);
-
-		if(status.ok()) {
-			cout << "check_alive OK\n";
-		} else {
-			cout << "check_alive Not OK\n";
-		}
+		return stub_->check_alive(&context, request, &response);
 	}
 
 	private:
 	std::unique_ptr<KeyValueService::Stub> stub_;
 };
+
+vector<KeyValueServiceStorageClient> storages;
+std::mutex storages_mtx;
 
 class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	public:
@@ -62,7 +62,7 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	}
 
 	Status get_snn(ServerContext* context, const Key* key, Port* port) override {
-		cout << "get_snn is called by client.\n";
+		cout << "manager - get_snn is called by client.\n";
 		std::lock_guard<std::mutex> lock(node_mtx);
 		if(auto it = key_nodes_map.find(key->key()); it != key_nodes_map.end()) {
 			vector<string>& ports = it->second;
@@ -70,15 +70,15 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 			cout << get_target_port(ports) << "\n";
 		} else {
 			port->set_port("");
-			cout << "get error\n";
+			cout << "manager - get error\n";
 		}
 		
-		cout << "get_snn end\n";
+		cout << "manager - get_snn end\n";
 		return Status::OK;
 	}
 
 	Status put_snn(ServerContext* context, const Key* key, Put_Ports* put_ports) override {
-		cout << "put_snn is called by client. key: " << key->key() << "\n";
+		cout << "manager - put_snn is called by client. key: " << key->key() << "\n";
 		std::lock_guard<std::mutex> lock(node_mtx);
 		if(auto it = key_nodes_map.find(key->key()); it != key_nodes_map.end()) {
 			// moidfy operation
@@ -96,22 +96,26 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 			}
 		}
 		
-		cout << "put_snn end\n";
+		cout << "manager - put_snn end\n";
 		return Status::OK;
 	}
 
 
 	Status str_cnt(ServerContext* context, const Port* port, Void* response) override {
-		cout << "str_cnt is called by storage node. port num: " << port->port() << "\n";
-		cout << "Connect to storage node. port num: " << port->port() << "\n";
+		cout << "manager - str_cnt is called by storage node. port num: " << port->port() << "\n";
+		cout << "manager - Connect to storage node. port num: " << port->port() << "\n";
 
+		{
 			// connect to storage node
+			std::lock_guard<std::mutex> lock(storages_mtx);
 			std::string server_address = "0.0.0.0:" + port->port();
-			KeyValueServiceStorageClient client(grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials()));
-			client.check_alive();
-		
+			storages.push_back(KeyValueServiceStorageClient(port->port(), grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials())));
+		}
+
+		{
 			std::lock_guard<std::mutex> lock(node_mtx);
-    		node_vol_map[port->port()] = 0;
+			node_vol_map[port->port()] = 0;
+		}
 
 		return Status::OK;
 	}
@@ -143,7 +147,27 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 };
 
 void PeriodicCheckAlive(int interval) {
+	while(true) {
+		std::unique_lock<mutex> lock(storages_mtx);
 
+		for (auto it = storages.rbegin(); it != storages.rend(); ++it) {
+			cout << "manager - check storage : " << it->port << "\n";
+			Status status = it->check_alive();
+			if (!status.ok()) {
+				cout << "manager - check_alive Not OK, removing storage node info\n";
+				// remove storage info in storages vector
+				storages.erase((it + 1).base());
+				// todo : remove storage info in node_vol_map
+				// todo : remove stroage info in key_nodes_map
+				// todo : choose another storage node
+			} else {
+				cout << "manager - check_alive OK\n";
+			}
+		}
+		lock.unlock();
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+	}
 }
 
 void GTStoreManager::init(int nodes, int rep) {
@@ -155,10 +179,11 @@ void GTStoreManager::init(int nodes, int rep) {
   	builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   	builder.RegisterService(&service);
   	std::unique_ptr<Server> server(builder.BuildAndStart());
-  	std::cout << "Server listening on " << server_address << std::endl;
+  	std::cout << "manager - Server listening on " << server_address << std::endl;
 
 	// 주기적으로 살아있는지 확인
-
+	std::thread checkThread(PeriodicCheckAlive, 500);
+    checkThread.detach();
 	
   	server->Wait();
 }
@@ -168,7 +193,7 @@ int main(int argc, char **argv) {
 	int nodes = std::atoi(argv[2]);
     int rep = std::atoi(argv[4]);
 
-	std::cout << "Nodes: " << nodes << ", Replications: " << rep << std::endl;
+	std::cout << "manager - Nodes: " << nodes << ", Replications: " << rep << std::endl;
 
 	GTStoreManager manager;
 	manager.init(nodes, rep);
