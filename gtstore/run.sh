@@ -2,10 +2,12 @@
 # Launch the GTStore Manager
 cd cmake/build
 ./manager --nodes 1 --reps 1 &
+manager_pid=$!
 sleep 5
 
 # Launch couple GTStore Storage Nodes
 ./storage 50052 &
+storage_pid=$!
 sleep 5
 #./storage &
 #sleep 5
@@ -17,5 +19,8 @@ sleep 2
 ./test_app single_set_get 2
 sleep 2
 ./test_app single_set_get 3 
+
+kill $manager_pid
+kill $storage_pid
 
 cd ../..
