@@ -150,7 +150,7 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	int rep;
 
 	string get_target_port(vector<string>& ports) {
-		// 살아있는 포트 확인하고 보내기
+		// todo: 살아있는 포트 확인하고 보내기
 		return ports[0];
 	}
 	vector<string> get_target_ports() {
