@@ -98,7 +98,7 @@ class KeyValueServiceStorageImpl final : public KeyValueService::Service {
 	}
 
 	Status check_alive(ServerContext* context, const Void* request, Void* response) {
-		cout << "storage - check_alive is called by manager.\n";
+		// cout << "storage - check_alive is called by manager.\n";
 		
 		return Status::OK;
 	}
