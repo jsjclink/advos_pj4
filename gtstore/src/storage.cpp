@@ -88,10 +88,18 @@ class KeyValueServiceStorageImpl final : public KeyValueService::Service {
 
 	Status put(ServerContext* context, const KeyValue* keyvalue, Void* response) override {
 		cout << "storage - put is called by client.\n";
-		vector<string> values(keyvalue->values().begin(), keyvalue->values().end());
+		
 
 		std::lock_guard<std::mutex> lock(storage_mtx);
-		storage[keyvalue->key()] = values;
+
+		if(auto it = storage.find(keyvalue->key()); it != storage.end()) {
+			for(auto value : keyvalue->values()) {
+				storage[keyvalue->key()].push_back(value);
+			}
+		} else {
+			vector<string> values(keyvalue->values().begin(), keyvalue->values().end());
+			storage[keyvalue->key()] = values;
+		}
 
 		cout << "storage - put end.\n";
 		return Status::OK;

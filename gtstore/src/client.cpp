@@ -68,19 +68,26 @@ val_t ConnStrGetValue(string port, string key){
 	}
 }
 bool ConnStrPutValue(val_t ports,string key,val_t value){
+	cout << "client - connstrputvalue. key: " << key << " ports : ";
+	for(auto port : ports) {
+		cout << port << " ";
+	}
+	cout << "\n";
 	KeyValue gkey = MakeKeyValue(key,value);
-	grpc::ClientContext context;
 	Void vd;
 	for(string port : ports){
+		grpc::ClientContext context;
 		auto channel = grpc::CreateChannel("localhost:"+port, grpc::InsecureChannelCredentials());
 		unique_ptr<KeyValueService::Stub> stub_ = KeyValueService::NewStub(channel);
 		Status stat = stub_->put(&context,gkey,&vd);
 		if(stat.ok()){
-			std::cout << "client - Response received: put success" << std::endl;
-			return true;
+			std::cout << "client - Response received: put success port: " << port << std::endl;
+			// return true;
+		} else {
+			cout << "client - put failed. port: " << port << "\n";
 		}
 	}
-	return false;
+	return true;
 }
 void GTStoreClient::init(int id) {
 
@@ -177,9 +184,12 @@ bool GTStoreClient::put(string key, val_t value) {
 		Status stat = this->stub_->put_snn(&context,gkey,&response);
 		if(stat.ok()){
 			//std::cout << "client - Response received" << std::endl;
+			cout << "client - put ssn ports : ";
 			for (auto msg: response.ports()){
+				cout << msg << " ";
 				ports.push_back(msg);
 			}
+			cout << "\n";
 			ClientMap[key] = ports;
 			return ConnStrPutValue(ports,key,value);
 		}
