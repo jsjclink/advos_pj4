@@ -38,7 +38,34 @@ class KeyValueServiceStorageClient {
 	public:
 	string port;
 	KeyValueServiceStorageClient(string port, std::shared_ptr<Channel> channel) : port(port), stub_(KeyValueService::NewStub(channel)) {
+	}
 
+	vector<string> get(string key) {
+		ClientContext context;
+		Key k;
+		k.set_key(key);
+		Value response;
+		vector<string> values;
+
+		Status status = stub_->get(&context, k, &response);
+		if(status.ok()) {
+			for(auto value : response.values()) {
+				values.push_back(value);
+			}
+		} 
+		
+		return values;
+	}
+
+	void put(string key, vector<string> values) {
+		ClientContext context;
+		KeyValue kv;
+		kv.set_key(key);
+		for(string value : values) {
+			kv.add_values(value);
+		}
+		Void response;
+		Status status = stub_->put(&context, kv, &response);
 	}
 
 	Status check_alive() {
@@ -105,17 +132,15 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 		cout << "manager - str_cnt is called by storage node. port num: " << port->port() << "\n";
 		cout << "manager - Connect to storage node. port num: " << port->port() << "\n";
 
-		{
-			// connect to storage node
-			std::lock_guard<std::mutex> lock(storages_mtx);
-			std::string server_address = "0.0.0.0:" + port->port();
-			storages.push_back(KeyValueServiceStorageClient(port->port(), grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials())));
-		}
-
-		{
-			std::lock_guard<std::mutex> lock(node_mtx);
-			node_vol_map[port->port()] = 0;
-		}
+		// connect to storage node
+		std::unique_lock<std::mutex> storage_lock(storages_mtx);
+		std::string server_address = "0.0.0.0:" + port->port();
+		storages.push_back(KeyValueServiceStorageClient(port->port(), grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials())));
+		storage_lock.unlock();
+		
+		std::unique_lock<std::mutex> node_lock(node_mtx);
+		node_vol_map[port->port()] = 0;
+		node_lock.unlock();
 
 		return Status::OK;
 	}
@@ -125,6 +150,7 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	int rep;
 
 	string get_target_port(vector<string>& ports) {
+		// 살아있는 포트 확인하고 보내기
 		return ports[0];
 	}
 	vector<string> get_target_ports() {
@@ -148,23 +174,71 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 
 void PeriodicCheckAlive(int interval) {
 	while(true) {
-		std::unique_lock<mutex> lock(storages_mtx);
+		vector<string> remove_ports;
 
+		std::unique_lock<mutex> storages_lock(storages_mtx);
 		for (auto it = storages.rbegin(); it != storages.rend(); ++it) {
 			cout << "manager - check storage : " << it->port << "\n";
 			Status status = it->check_alive();
 			if (!status.ok()) {
 				cout << "manager - check_alive Not OK, removing storage node info\n";
+				// remove storage infos in maps
+				remove_ports.push_back(it->port);
 				// remove storage info in storages vector
 				storages.erase((it + 1).base());
-				// todo : remove storage info in node_vol_map
-				// todo : remove stroage info in key_nodes_map
-				// todo : choose another storage node
 			} else {
 				cout << "manager - check_alive OK\n";
 			}
 		}
-		lock.unlock();
+		storages_lock.unlock();
+
+		if(remove_ports.size() == 0) continue;
+
+		vector<string> keys_with_removed_nodes;
+		std::unique_lock<mutex> node_lock(node_mtx);
+		// remove storage info in maps
+		for(const string& port : remove_ports) {
+			node_vol_map.erase(port);
+		}
+		// remove storage info in maps
+		for(auto& entry : key_nodes_map) {
+			vector<string>& ports = entry.second;
+			auto original_size = ports.size();
+
+			ports.erase(std::remove_if(ports.begin(), ports.end(),
+				[&](const string& port) {
+					return std::find(remove_ports.begin(), remove_ports.end(), port) != remove_ports.end();
+				}), ports.end());
+
+			if(ports.size() != original_size) {
+				keys_with_removed_nodes.push_back(entry.first);
+			}
+
+		}
+		// choose other nodes to store
+		for(const string& key : keys_with_removed_nodes) {
+			// choose minimum vol node
+			auto min_port = std::min_element(node_vol_map.begin(), node_vol_map.end(),
+				[](const auto& a, const auto& b) {
+					return a.second < b.second;
+				})->first;
+			auto it_min_node = std::find_if(storages.begin(), storages.end(), 
+				[&min_port](const KeyValueServiceStorageClient& client) {
+        			return client.port == min_port;
+    			});
+			// get value info from live node
+			string live_port = key_nodes_map[key][0];
+			auto it_live_node = std::find_if(storages.begin(), storages.end(), 
+				[&live_port](const KeyValueServiceStorageClient& client) {
+        			return client.port == live_port;
+    			});
+			vector<string> values = it_live_node->get(key);
+			// put value info to minimum vol node
+			it_min_node->put(key, values);
+		}
+
+		node_lock.unlock();
+
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(interval));
 	}
