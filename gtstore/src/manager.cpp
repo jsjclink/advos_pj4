@@ -34,6 +34,8 @@ unordered_map<string, int> node_vol_map;
 unordered_map<string, vector<string>> key_nodes_map;
 std::mutex node_mtx;
 
+void check_nodes();
+
 class KeyValueServiceStorageClient {
 	public:
 	string port;
@@ -89,12 +91,15 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	}
 
 	Status get_snn(ServerContext* context, const Key* key, Port* port) override {
-		cout << "manager - get_snn is called by client.\n";
+		cout << "manager - get_snn is called by client. key: " << key->key() << "\n";
+		
+		check_nodes();
+
 		std::lock_guard<std::mutex> lock(node_mtx);
 		if(auto it = key_nodes_map.find(key->key()); it != key_nodes_map.end()) {
 			vector<string>& ports = it->second;
 			port->set_port(get_target_port(ports));
-			cout << get_target_port(ports) << "\n";
+			cout << "manager - port : " << get_target_port(ports) << "\n";
 		} else {
 			port->set_port("");
 			cout << "manager - get error\n";
@@ -106,6 +111,9 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 
 	Status put_snn(ServerContext* context, const Key* key, Put_Ports* put_ports) override {
 		cout << "manager - put_snn is called by client. key: " << key->key() << "\n";
+		
+		check_nodes();
+		
 		std::lock_guard<std::mutex> lock(node_mtx);
 		if(auto it = key_nodes_map.find(key->key()); it != key_nodes_map.end()) {
 			// moidfy operation
@@ -172,73 +180,95 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	}
 };
 
+void check_nodes() {
+	vector<string> remove_ports;
+
+	std::unique_lock<mutex> storages_lock(storages_mtx);
+	for (auto it = storages.rbegin(); it != storages.rend(); ++it) {
+		// cout << "manager - check storage : " << it->port << "\n";
+		Status status = it->check_alive();
+		if (!status.ok()) {
+			cout << "manager - check_alive Not OK, removing storage node info port: " << it->port <<  "\n";
+			// remove storage infos in maps
+			remove_ports.push_back(it->port);
+			// remove storage info in storages vector
+			storages.erase((it + 1).base());
+		} else {
+			// cout << "manager - check_alive OK\n";
+		}
+	}
+	storages_lock.unlock();
+
+	if(remove_ports.size() == 0) return;
+	
+	vector<string> keys_with_removed_nodes;
+	std::unique_lock<mutex> node_lock(node_mtx);
+	// remove storage info in maps
+	cout << "remove storage info in maps\n";
+	for(const string& port : remove_ports) {
+		node_vol_map.erase(port);
+	}
+	// remove storage info in maps
+	for(auto& entry : key_nodes_map) {
+		vector<string>& ports = entry.second;
+		auto original_size = ports.size();
+
+		ports.erase(std::remove_if(ports.begin(), ports.end(),
+			[&](const string& port) {
+				return std::find(remove_ports.begin(), remove_ports.end(), port) != remove_ports.end();
+			}), ports.end());
+
+		if(ports.size() != original_size) {
+			keys_with_removed_nodes.push_back(entry.first);
+		}
+
+	}
+	// choose other node to store
+	for(const string& key : keys_with_removed_nodes) {
+		// choose fresh minimum vol node
+		vector<string>& nonfresh_nodes = key_nodes_map[key];
+		unordered_map<string, int> filtered_node_vol_map;
+		for(const auto& entry : node_vol_map) {
+			if(std::find(nonfresh_nodes.begin(), nonfresh_nodes.end(), entry.first) == nonfresh_nodes.end()) {
+				filtered_node_vol_map[entry.first] = entry.second;
+			}
+		}
+		auto min_port = std::min_element(filtered_node_vol_map.begin(), filtered_node_vol_map.end(),
+			[](const auto& a, const auto& b) {
+				return a.second < b.second;
+			})->first;
+		auto it_min_node = std::find_if(storages.begin(), storages.end(), 
+			[&min_port](const KeyValueServiceStorageClient& client) {
+				return client.port == min_port;
+			});
+		cout << "choose other node to store key : " << key << ". other node : " << min_port << "\n";
+		// get value info from live node
+		string live_port = key_nodes_map[key][0];
+		auto it_live_node = std::find_if(storages.begin(), storages.end(), 
+			[&live_port](const KeyValueServiceStorageClient& client) {
+				return client.port == live_port;
+			});
+		cout << "find live node. live node : " << live_port << "\n";
+		vector<string> values = it_live_node->get(key);
+		cout << "values: ";
+		for(auto value : values) {
+			cout << value;
+		}
+		cout << "\n";
+		// put value info to minimum vol node
+		it_min_node->put(key, values);
+
+		// update info
+		node_vol_map[min_port] += 1;
+		key_nodes_map[key].push_back(min_port);
+	}
+
+	node_lock.unlock();
+}
+
 void PeriodicCheckAlive(int interval) {
 	while(true) {
-		vector<string> remove_ports;
-
-		std::unique_lock<mutex> storages_lock(storages_mtx);
-		for (auto it = storages.rbegin(); it != storages.rend(); ++it) {
-			cout << "manager - check storage : " << it->port << "\n";
-			Status status = it->check_alive();
-			if (!status.ok()) {
-				cout << "manager - check_alive Not OK, removing storage node info\n";
-				// remove storage infos in maps
-				remove_ports.push_back(it->port);
-				// remove storage info in storages vector
-				storages.erase((it + 1).base());
-			} else {
-				cout << "manager - check_alive OK\n";
-			}
-		}
-		storages_lock.unlock();
-
-		if(remove_ports.size() == 0) continue;
-
-		vector<string> keys_with_removed_nodes;
-		std::unique_lock<mutex> node_lock(node_mtx);
-		// remove storage info in maps
-		for(const string& port : remove_ports) {
-			node_vol_map.erase(port);
-		}
-		// remove storage info in maps
-		for(auto& entry : key_nodes_map) {
-			vector<string>& ports = entry.second;
-			auto original_size = ports.size();
-
-			ports.erase(std::remove_if(ports.begin(), ports.end(),
-				[&](const string& port) {
-					return std::find(remove_ports.begin(), remove_ports.end(), port) != remove_ports.end();
-				}), ports.end());
-
-			if(ports.size() != original_size) {
-				keys_with_removed_nodes.push_back(entry.first);
-			}
-
-		}
-		// choose other nodes to store
-		for(const string& key : keys_with_removed_nodes) {
-			// choose minimum vol node
-			auto min_port = std::min_element(node_vol_map.begin(), node_vol_map.end(),
-				[](const auto& a, const auto& b) {
-					return a.second < b.second;
-				})->first;
-			auto it_min_node = std::find_if(storages.begin(), storages.end(), 
-				[&min_port](const KeyValueServiceStorageClient& client) {
-        			return client.port == min_port;
-    			});
-			// get value info from live node
-			string live_port = key_nodes_map[key][0];
-			auto it_live_node = std::find_if(storages.begin(), storages.end(), 
-				[&live_port](const KeyValueServiceStorageClient& client) {
-        			return client.port == live_port;
-    			});
-			vector<string> values = it_live_node->get(key);
-			// put value info to minimum vol node
-			it_min_node->put(key, values);
-		}
-
-		node_lock.unlock();
-
+		check_nodes();
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(interval));
 	}
