@@ -85,3 +85,11 @@ target_link_libraries(test_app
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
+
+add_executable(client "./src/testcase.cpp")
+target_link_libraries(client
+    kv_grpc_proto
+    client_lib
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF})

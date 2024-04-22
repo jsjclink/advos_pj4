@@ -4,13 +4,13 @@ main(){
     local nodes=$1
     local reps=$2
     ./manager --nodes $nodes --reps $reps &
+    sleep 2;
     for i in $(seq $nodes)
     do
-        ./storage &
+        port=$((50051 + i))
+        ./storage $port &
         sleep 5;
     done
 }
 
-cd cmake/build
 main $1 $2
-cd ../..
