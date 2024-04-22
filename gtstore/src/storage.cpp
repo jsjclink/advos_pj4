@@ -92,14 +92,8 @@ class KeyValueServiceStorageImpl final : public KeyValueService::Service {
 
 		std::lock_guard<std::mutex> lock(storage_mtx);
 
-		if(auto it = storage.find(keyvalue->key()); it != storage.end()) {
-			for(auto value : keyvalue->values()) {
-				storage[keyvalue->key()].push_back(value);
-			}
-		} else {
-			vector<string> values(keyvalue->values().begin(), keyvalue->values().end());
-			storage[keyvalue->key()] = values;
-		}
+		vector<string> values(keyvalue->values().begin(), keyvalue->values().end());
+		storage[keyvalue->key()] = values;
 
 		cout << "storage - put end.\n";
 		return Status::OK;
