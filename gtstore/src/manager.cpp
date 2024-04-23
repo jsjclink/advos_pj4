@@ -91,7 +91,7 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 	}
 
 	Status get_snn(ServerContext* context, const Key* key, Port* port) override {
-		cout << "manager - get_snn is called by client. key: " << key->key() << "\n";
+		//cout << "manager - get_snn is called by client. key: " << key->key() << "\n";
 		
 		check_nodes();
 
@@ -99,18 +99,18 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 		if(auto it = key_nodes_map.find(key->key()); it != key_nodes_map.end()) {
 			vector<string>& ports = it->second;
 			port->set_port(get_target_port(ports));
-			cout << "manager - port : " << get_target_port(ports) << "\n";
+			//cout << "manager - port : " << get_target_port(ports) << "\n";
 		} else {
 			port->set_port("");
-			cout << "manager - get error\n";
+			//cout << "manager - get error\n";
 		}
 		
-		cout << "manager - get_snn end\n";
+		//cout << "manager - get_snn end\n";
 		return Status::OK;
 	}
 
 	Status put_snn(ServerContext* context, const Key* key, Put_Ports* put_ports) override {
-		cout << "manager - put_snn is called by client. key: " << key->key() << "\n";
+		//cout << "manager - put_snn is called by client. key: " << key->key() << "\n";
 		
 		check_nodes();
 		
@@ -131,7 +131,7 @@ class KeyValueServiceManagerImpl final : public KeyValueService::Service {
 			}
 		}
 		
-		cout << "manager - put_snn end\n";
+		//cout << "manager - put_snn end\n";
 		return Status::OK;
 	}
 
@@ -204,7 +204,7 @@ void check_nodes() {
 	vector<string> keys_with_removed_nodes;
 	std::unique_lock<mutex> node_lock(node_mtx);
 	// remove storage info in maps
-	cout << "remove storage info in maps\n";
+	//cout << "remove storage info in maps\n";
 	for(const string& port : remove_ports) {
 		node_vol_map.erase(port);
 	}
@@ -241,20 +241,21 @@ void check_nodes() {
 			[&min_port](const KeyValueServiceStorageClient& client) {
 				return client.port == min_port;
 			});
-		cout << "choose other node to store key : " << key << ". other node : " << min_port << "\n";
+		//cout << "choose other node to store key : " << key << ". other node : " << min_port << "\n";
 		// get value info from live node
 		string live_port = key_nodes_map[key][0];
 		auto it_live_node = std::find_if(storages.begin(), storages.end(), 
 			[&live_port](const KeyValueServiceStorageClient& client) {
 				return client.port == live_port;
 			});
-		cout << "find live node. live node : " << live_port << "\n";
+		//cout << "find live node. live node : " << live_port << "\n";
 		vector<string> values = it_live_node->get(key);
-		cout << "values: ";
+		/*cout << "values: ";
 		for(auto value : values) {
 			cout << value;
 		}
 		cout << "\n";
+		*/
 		// put value info to minimum vol node
 		it_min_node->put(key, values);
 
@@ -275,7 +276,7 @@ void PeriodicCheckAlive(int interval) {
 }
 
 void GTStoreManager::init(int nodes, int rep) {
-	cout << "Inside GTStoreManager::init()\n";
+	//cout << "Inside GTStoreManager::init()\n";
 	std::string server_address("0.0.0.0:50051");
 	KeyValueServiceManagerImpl service(nodes, rep);
 
@@ -283,7 +284,7 @@ void GTStoreManager::init(int nodes, int rep) {
   	builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   	builder.RegisterService(&service);
   	std::unique_ptr<Server> server(builder.BuildAndStart());
-  	std::cout << "manager - Server listening on " << server_address << std::endl;
+  	//std::cout << "manager - Server listening on " << server_address << std::endl;
 
 	// 주기적으로 살아있는지 확인
 	std::thread checkThread(PeriodicCheckAlive, 500);

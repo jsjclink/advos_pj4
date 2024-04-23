@@ -20,7 +20,6 @@ sleep 3
 sleep 3
 ./test_app single_set_get 3 &
 sleep 3
-
 kill $manager_pid
 kill $storage_pid
 

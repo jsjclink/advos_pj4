@@ -57,7 +57,7 @@ val_t ConnStrGetValue(string port, string key){
 	unique_ptr<KeyValueService::Stub> stub_ = KeyValueService::NewStub(channel);
 	Status stat = stub_->get(&context,gkey,&response);
 	if(stat.ok()){
-		std::cout << "client - Response received: get success" << std::endl;
+		//std::cout << "client - Response received: get success" << std::endl;
 		for(auto msg : response.values()){
 			value.push_back(msg);
 		}
@@ -68,11 +68,11 @@ val_t ConnStrGetValue(string port, string key){
 	}
 }
 bool ConnStrPutValue(val_t ports,string key,val_t value){
-	cout << "client - connstrputvalue. key: " << key << " ports : ";
+	/*cout << "client - connstrputvalue. key: " << key << " ports : ";
 	for(auto port : ports) {
 		cout << port << " ";
 	}
-	cout << "\n";
+	cout << "\n";*/
 	KeyValue gkey = MakeKeyValue(key,value);
 	Void vd;
 	for(string port : ports){
@@ -80,12 +80,13 @@ bool ConnStrPutValue(val_t ports,string key,val_t value){
 		auto channel = grpc::CreateChannel("localhost:"+port, grpc::InsecureChannelCredentials());
 		unique_ptr<KeyValueService::Stub> stub_ = KeyValueService::NewStub(channel);
 		Status stat = stub_->put(&context,gkey,&vd);
-		if(stat.ok()){
+		/*if(stat.ok()){
 			std::cout << "client - Response received: put success port: " << port << std::endl;
 			// return true;
 		} else {
 			cout << "client - put failed. port: " << port << "\n";
 		}
+		*/
 	}
 	return true;
 }
@@ -184,12 +185,12 @@ bool GTStoreClient::put(string key, val_t value) {
 		Status stat = this->stub_->put_snn(&context,gkey,&response);
 		if(stat.ok()){
 			//std::cout << "client - Response received" << std::endl;
-			cout << "client - put ssn ports : ";
+			//cout << "client - put ssn ports : ";
 			for (auto msg: response.ports()){
-				cout << msg << " ";
+				//cout << msg << " ";
 				ports.push_back(msg);
 			}
-			cout << "\n";
+			//cout << "\n";
 			ClientMap[key] = ports;
 			return ConnStrPutValue(ports,key,value);
 		}
@@ -197,6 +198,22 @@ bool GTStoreClient::put(string key, val_t value) {
 			std::cerr << "client - RPC failed: " << stat.error_message() << std::endl;
 			return false;
 		}
+}
+
+void GTStoreClient::printHistogram() {
+	//cout<<"Starting printHistogram\n";
+    unordered_map<string, int> histogram;
+	val_t ports;
+    for (auto pair : ClientMap) {
+        ports = pair.second;
+		for(string port: ports){
+			histogram[port]++;
+		}
+    }
+    for (auto pair : histogram) {
+        std::cout << "Storage Node Port: " << pair.first << ", Number of Keys: " << pair.second << std::endl;
+    }
+	return;
 }
 
 void GTStoreClient::finalize() {

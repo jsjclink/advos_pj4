@@ -1,3 +1,4 @@
+#!/bin/bash
 ./clean.sh
 export MY_INSTALL_DIR=$HOME/.local
 mkdir -p cmake/build

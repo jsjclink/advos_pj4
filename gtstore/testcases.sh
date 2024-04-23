@@ -56,6 +56,7 @@ testcase_2(){
     ./client --get key2
     ./client --get key3
     kill_service "$manager_pid"
+    echo ""
 }
 
 testcase_3(){
@@ -75,7 +76,7 @@ testcase_3(){
     ./client --put key10 --val value10
     
     kill "${storage_pids[0]}"
-
+    echo "killed ${storage_pids[0]}"
     ./client --get key1
     ./client --get key2
     ./client --get key3
@@ -87,6 +88,7 @@ testcase_3(){
     ./client --get key9
     ./client --get key10
     kill_service "$manager_pid"
+    echo ""
 }
 
 testcase_4(){
@@ -119,7 +121,9 @@ testcase_4(){
 
     
     kill "${storage_pids[0]}"
+    echo "killed ${storage_pids[0]}"
     kill "${storage_pids[1]}"
+    echo "killed ${storage_pids[1]}"
 
     ./client --get key1
     ./client --get key2
@@ -142,20 +146,20 @@ testcase_4(){
     ./client --get key19
     ./client --get key20
     kill_service "$manager_pid"
+    echo ""
 }
 
 main(){
     testcase_1
-    sleep 5
+    sleep 3
     testcase_2
-    #sleep 5
-    #testcase_3
-    #sleep 5
-    #testcase_4
-    #sleep 5
+    sleep 3
+    testcase_3
+    sleep 5
+    testcase_4
+    sleep 5
 }
 
 cd cmake/build
-cp ../../start_service.sh ./
 main $1 $2
 cd ../..

@@ -50,12 +50,13 @@ class KeyValueServiceManagerClient {
 		Void response;
 
 		Status status = stub_->str_cnt(&context, port, &response);
-
+		/*
 		if(status.ok()) {
 			cout << "storage - str_cnt OK\n";
 		} else {
 			cout << "storage - str_cnt Not OK\n";
 		}
+		*/
 	}
 
 	private:
@@ -70,24 +71,24 @@ class KeyValueServiceStorageImpl final : public KeyValueService::Service {
 	}
 
 	Status get(ServerContext* context, const Key* key, Value* value) override {
-		cout << "storage - get is called by client.\n";
+		//cout << "storage - get is called by client.\n";
 		if(auto it = storage.find(key->key()); it != storage.end()) {
-			cout << "storage - key found. get end.\n";
+			//cout << "storage - key found. get end.\n";
 			
 			vector<string>& values = it->second;
 			for(const string& val: values) {
 				value->add_values(val);
 			}
-		} else {
+		} /*else {
 			cout << "storage - key not found. get end.\n";
 		}
-
+		*/
 
 		return Status::OK;
 	}
 
 	Status put(ServerContext* context, const KeyValue* keyvalue, Void* response) override {
-		cout << "storage - put is called by client.\n";
+		//cout << "storage - put is called by client.\n";
 		
 
 		std::lock_guard<std::mutex> lock(storage_mtx);
@@ -95,7 +96,7 @@ class KeyValueServiceStorageImpl final : public KeyValueService::Service {
 		vector<string> values(keyvalue->values().begin(), keyvalue->values().end());
 		storage[keyvalue->key()] = values;
 
-		cout << "storage - put end.\n";
+		//cout << "storage - put end.\n";
 		return Status::OK;
 	}
 
@@ -107,7 +108,7 @@ class KeyValueServiceStorageImpl final : public KeyValueService::Service {
 };
 
 void GTStoreStorage::init(string port) {
-	cout << "Inside GTStoreStorage::init()\n";
+	//cout << "Inside GTStoreStorage::init()\n";
 	//TODO: change server port to go to a unique port everytime it is called
 	std::string server_address = "0.0.0.0:" + port;
 	KeyValueServiceStorageImpl service;
@@ -116,10 +117,10 @@ void GTStoreStorage::init(string port) {
   	builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   	builder.RegisterService(&service);
   	std::unique_ptr<Server> server(builder.BuildAndStart());
-  	std::cout << "storage - Server listening on " << server_address << std::endl;
+  	//std::cout << "storage - Server listening on " << server_address << std::endl;
 
 	// connect to manager
-	cout << "storage - Connect to server\n";
+	//cout << "storage - Connect to server\n";
 	KeyValueServiceManagerClient client(grpc::CreateChannel("0.0.0.0:50051", grpc::InsecureChannelCredentials()));
 	client.str_cnt(port);
 

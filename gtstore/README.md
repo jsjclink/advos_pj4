@@ -3,8 +3,14 @@
 
 ## Instructions
 
-### Build + Service Start + Running
-* ./nrun.sh
+### Build Everything (Auto Cleans before build)
+* ./build.sh
 
 ### Cleanup
 * ./clean.sh
+
+### Testcases
+* ./testcases.sh
+
+### Performance Tests
+* ./perf.sh

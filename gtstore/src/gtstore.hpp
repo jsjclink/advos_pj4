@@ -28,6 +28,7 @@ class GTStoreClient {
 		public:
 				void init(int id);
 				void finalize();
+				void printHistogram();
 				val_t get(string key);
 				bool put(string key, val_t value);
 };
