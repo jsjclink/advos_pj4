@@ -1,21 +1,38 @@
-CFLAGS  =
-LFLAGS  =
-CC      = g++ -std=c++11
+CXX = g++
+CFLAGS  += `pkg-config --cflags protobuf grpc`
+LDFLAGS  = -L/usr/local/lib `pkg-config --libs protobuf grpc++` \
+					-Wl,--no-as-needed -lgrpc++_reflection \
+					-Wl,--as-needed
+
+PROTOC = protoc
+GRPC_CPP_PLUGIN = grpc_cpp_plugin
+GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
+
 RM      = /bin/rm -rf
 
-TESTS = test_app manager storage
-CLIENT_SRC = src/test_app.cpp src/client.cpp
+TESTS = test_app testcase manager storage
+SRC = src/test_app.cpp src/client.cpp src/testcase.cpp
+
 
 all: $(TESTS)
 
-manager: src/manager.cpp
-	$(CC) -Wall src/manager.cpp -o bin/manager
+manager: keyvaluestore.pb.o keyvaluestore.grpc.pb.o src/gtstore.hpp src/manager.o
+	$(CXX) $^ $(LDFLAGS) -o $@
 
-storage: src/storage.cpp
-	$(CC) -Wall src/storage.cpp -o bin/storage
+storage: keyvaluestore.pb.o keyvaluestore.grpc.pb.o src/gtstore.hpp src/storage.o
+	$(CXX) $^ $(LDFLAGS) -o $@
 
-test_app: 
-	$(CC) -Wall $(CLIENT_SRC) -o bin/test_app
+test_app : keyvaluestore.pb.o keyvaluestore.grpc.pb.o src/gtstore.hpp src/client.o src/test_app.o
+	$(CXX) $^ $(LDFLAGS) -o $@
+
+testcase : keyvaluestore.pb.o keyvaluestore.grpc.pb.o src/gtstore.hpp src/client.o src/testcase.o
+	$(CXX) $^ $(LDFLAGS) -o $@
 
 clean:
-	$(RM) *.o $(TESTS)
+	$(RM) *.o *.pb.cc *.pb.h $(TESTS)
+
+%.grpc.pb.cc: %.proto
+	$(PROTOC) -I . --grpc_out=. --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN_PATH) $<
+
+%.pb.cc: %.proto
+	$(PROTOC) -I . --cpp_out=. $<
