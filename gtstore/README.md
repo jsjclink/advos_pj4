@@ -8,7 +8,7 @@
 
 ### Build Everything (ADVOS_VM)
 * ./vmbuild.sh
-This script assumes that gtstore is in the /home/username directory. Just in case this doesn't work, ./build.sh requires grpc and cmake to be installed locally. This is done exactly with https://grpc.io/docs/languages/cpp/quickstart/ these instructions.
+* This script assumes that gtstore is in the /home/username directory. Just in case this doesn't work, ./build.sh requires grpc and cmake to be installed locally. This is done exactly with https://grpc.io/docs/languages/cpp/quickstart/ these instructions.
 
 ### Cleanup
 * ./clean.sh
