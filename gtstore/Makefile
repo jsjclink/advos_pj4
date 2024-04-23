@@ -38,7 +38,7 @@ clean:
 	$(PROTOC) -I . --cpp_out=. $<
 
 %.o: %.cc
-    $(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CFLAGS) -c $< -o $@
 
 %.o: %.cpp
-    $(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CFLAGS) -c $< -o $@
