@@ -36,3 +36,9 @@ clean:
 
 %.pb.cc: %.proto
 	$(PROTOC) -I . --cpp_out=. $<
+
+%.o: %.cc
+    $(CXX) $(CFLAGS) -c $< -o $@
+
+%.o: %.cpp
+    $(CXX) $(CFLAGS) -c $< -o $@
